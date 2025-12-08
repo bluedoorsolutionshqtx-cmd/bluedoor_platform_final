@@ -1,0 +1,9 @@
+{
+  "name": "bluedoor_platform",
+  "private": true,
+  "scripts": {
+    "lint": "echo \"add lint\"",
+    "test": "echo \"add tests\"",
+    "build": "echo \"add build\""
+  }
+}
