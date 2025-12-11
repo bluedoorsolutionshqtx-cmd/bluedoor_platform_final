@@ -54,7 +54,6 @@ jobs:
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID_DEV }}
         run: |
           npm install -g @railway/cli
-          railway login --token "$RAILWAY_TOKEN"
           railway link --project "$RAILWAY_PROJECT_ID"
           railway up --detach
 
@@ -65,6 +64,5 @@ jobs:
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID_STAGE }}
         run: |
           npm install -g @railway/cli
-          railway login --token "$RAILWAY_TOKEN"
           railway link --project "$RAILWAY_PROJECT_ID"
           railway up --detach
