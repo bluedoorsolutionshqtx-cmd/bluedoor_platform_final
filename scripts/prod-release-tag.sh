@@ -4,7 +4,7 @@ set -euo pipefail
 VERSION="${1:-}"
 
 if [[ -z "$VERSION" ]]; then
-  echo "Usage: $0 <version-tag> (e.g. v1.2.3)"
+  echo "Usage: $0 v1.2.3"
   exit 1
 fi
 
