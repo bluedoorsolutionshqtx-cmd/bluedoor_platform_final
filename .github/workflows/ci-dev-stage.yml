@@ -18,13 +18,13 @@ jobs:
       - run: pnpm build
       - name: Deploy (dev)
         if: github.ref == 'refs/heads/dev'
-        env: { RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_DEV }} }
+        env: { RAILWAY_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN_DEV }} }
         run: |
           npm i -g @railway/cli
           railway up --detach
       - name: Deploy (stage)
         if: github.ref == 'refs/heads/stage'
-        env: { RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGE }} }
+        env: { RAILWAY_TOKEN: ${{ secrets.RAILWAY_PROJECT_TOKEN_STAGE }} }
         run: |
           npm i -g @railway/cli
           railway up --detach
