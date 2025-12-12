@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BRANCH="${1:-main}"
+BRANCH="${1:-prod}"
 ENV_FILE="${2:-.env.prod}"
 
 echo "[onprem-deploy] Using branch: $BRANCH"
