@@ -6,63 +6,44 @@ on:
   pull_request:
     branches: [dev, stage]
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - run: |
+          node -v
+          pnpm -v
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Test
-        run: pnpm test
-
-      - name: Build
-        run: pnpm build
-
-      - name: Upload build artifacts (stage only)
-        if: github.ref == 'refs/heads/stage'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bluedoor-platform-build
-          path: |
-            apps/**/dist
-            services/**/dist
-            packages/**/dist
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
 
       - name: Deploy to Railway (dev)
         if: github.ref == 'refs/heads/dev'
         env:
-          RAILWAY_API_TOKEN:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_TOKEN_DEV }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID_DEV }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_DEV }}
         run: |
-          npm install -g @railway/cli
-          railway link --project "$RAILWAY_PROJECT_ID"
+          npm i -g @railway/cli
           railway up --detach
 
       - name: Deploy to Railway (stage)
         if: github.ref == 'refs/heads/stage'
         env:
-          RAILWAY_API_TOKEN:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_TOKEN_STAGE }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID_STAGE }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGE }}
         run: |
-          npm install -g @railway/cli
-          railway link --project "$RAILWAY_PROJECT_ID"
+          npm i -g @railway/cli
           railway up --detach
