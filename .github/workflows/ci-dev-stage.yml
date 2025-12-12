@@ -48,7 +48,7 @@ jobs:
       - name: Deploy to Railway (dev)
         if: github.ref == 'refs/heads/dev'
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_DEV }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN_DEV }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID_DEV }}
         run: |
           npm install -g @railway/cli
@@ -58,7 +58,7 @@ jobs:
       - name: Deploy to Railway (stage)
         if: github.ref == 'refs/heads/stage'
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGE }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN_STAGE }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID_STAGE }}
         run: |
           npm install -g @railway/cli
