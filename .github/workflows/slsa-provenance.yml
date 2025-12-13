@@ -1,0 +1,87 @@
+name: Supply Chain - SLSA Provenance (MAX)
+
+on:
+  push:
+    branches: [prod]
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+concurrency:
+  group: slsa-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+jobs:
+  build-artifacts:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_path: ${{ steps.meta.outputs.artifact_path }}
+      sbom_path: ${{ steps.meta.outputs.sbom_path }}
+      sha_path: ${{ steps.meta.outputs.sha_path }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build supply-chain artifacts (tar + sha + SBOM)
+        run: |
+          bash scripts/supplychain-pack.sh dist bluedoor_platform-src.tar.gz
+          bash scripts/sbom-cyclonedx.sh dist sbom.cdx.json
+          cd dist
+          sha256sum sbom.cdx.json > sbom.cdx.json.sha256
+
+      - name: Record artifact metadata
+        id: meta
+        run: |
+          echo "artifact_path=dist/bluedoor_platform-src.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "sbom_path=dist/sbom.cdx.json" >> "$GITHUB_OUTPUT"
+          echo "sha_path=dist/bluedoor_platform-src.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifacts for provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: bluedoor-supplychain-inputs
+          path: |
+            dist/bluedoor_platform-src.tar.gz
+            dist/bluedoor_platform-src.tar.gz.sha256
+            dist/sbom.cdx.json
+            dist/sbom.cdx.json.sha256
+
+  provenance:
+    needs: build-artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: bluedoor-supplychain-inputs
+          path: dist
+
+      - name: Generate SLSA provenance (generic)
+        uses: slsa-framework/slsa-github-generator/actions/generator/generic@v2.0.0
+        with:
+          base64-subjects: |
+            $(printf "dist/bluedoor_platform-src.tar.gz" | base64 -w0)
+            $(printf "dist/sbom.cdx.json" | base64 -w0)
+            $(printf "dist/bluedoor_platform-src.tar.gz.sha256" | base64 -w0)
+            $(printf "dist/sbom.cdx.json.sha256" | base64 -w0)
+
+      - name: Upload provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: bluedoor-slsa-provenance
+          path: |
+            provenance.intoto.jsonl
