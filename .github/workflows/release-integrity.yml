@@ -1,0 +1,39 @@
+name: Release - Integrity Artifacts
+
+on:
+  push:
+    branches: [prod]
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  pack-and-hash:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create source tarball
+        run: |
+          mkdir -p dist
+          tar -czf dist/bluedoor_platform-src.tar.gz \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=dist \
+            .
+
+      - name: SHA256
+        run: |
+          cd dist
+          sha256sum bluedoor_platform-src.tar.gz > bluedoor_platform-src.tar.gz.sha256
+          cat bluedoor_platform-src.tar.gz.sha256
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bluedoor-platform-integrity
+          path: dist/*
