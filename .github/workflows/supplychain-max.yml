@@ -1,0 +1,77 @@
+name: Supply Chain - MAX (CycloneDX + Cosign Keyless)
+
+on:
+  push:
+    branches: [prod]
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+concurrency:
+  group: supplychain-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  pack-sign-attest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Create artifacts (tar + sha)
+        run: |
+          bash scripts/supplychain-pack.sh dist bluedoor_platform-src.tar.gz
+
+      - name: Generate CycloneDX SBOM (cdxgen)
+        run: |
+          bash scripts/sbom-cyclonedx.sh dist sbom.cdx.json
+
+      - name: Hash SBOM
+        run: |
+          cd dist
+          sha256sum sbom.cdx.json > sbom.cdx.json.sha256
+          cat sbom.cdx.json.sha256
+
+      - name: Install Cosign (keyless)
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.4.1"
+
+      - name: Cosign sign blobs (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cd dist
+
+          cosign sign-blob --yes bluedoor_platform-src.tar.gz --output-signature bluedoor_platform-src.tar.gz.sig
+          cosign sign-blob --yes bluedoor_platform-src.tar.gz.sha256 --output-signature bluedoor_platform-src.tar.gz.sha256.sig
+
+          cosign sign-blob --yes sbom.cdx.json --output-signature sbom.cdx.json.sig
+          cosign sign-blob --yes sbom.cdx.json.sha256 --output-signature sbom.cdx.json.sha256.sig
+
+      - name: Cosign attest SBOM for tarball (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cd dist
+          cosign attest-blob --yes \
+            --predicate sbom.cdx.json \
+            --type cyclonedx \
+            bluedoor_platform-src.tar.gz \
+            --output-signature bluedoor_platform-src.tar.gz.sbom.att.sig
+
+      - name: Upload MAX supply-chain artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bluedoor-supplychain-max
+          path: dist/*
