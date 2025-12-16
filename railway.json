@@ -4,13 +4,13 @@
     "builder": "RAILPACK",
     "buildCommand": "pnpm install --frozen-lockfile",
     "watchPatterns": [
-      "/services/auth/**"
+      "/services/***/**"
     ]
   },
   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
-    "startCommand": "pnpm -C services/auth start",
+    "startCommand": "pnpm -C services/*** start",
     "limitOverride": {
       "containers": {
         "cpu": 8,
