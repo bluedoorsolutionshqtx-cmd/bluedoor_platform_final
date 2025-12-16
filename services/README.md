@@ -8,3 +8,29 @@ All services in this directory follow the same contract:
 - Configured entirely via environment variables
 
 Each service is independently deployable.
+
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK"
+    "watchPatterns": [
+      "/services/***/***"
+    ],
+    "buildEnvironment": "V3"
+  },
+  "deploy": {
+    "runtime": "V2"
+    "numReplicas": 1
+    "startCommand": "pnpm --filter @bluedoor/*** start"
+    "sleepApplication": false
+    "useLegacyStacker": false
+    "multiRegionConfig": {
+      "us-east4-eqdc4a": {
+        "numReplicas": 1
+      }
+    }
+    "restartPolicyType": "ON_FAILURE"
+    "restartPolicyMaxRetries": 10
+  }
+
+}
