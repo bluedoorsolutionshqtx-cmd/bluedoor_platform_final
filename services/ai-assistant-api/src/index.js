@@ -19,6 +19,7 @@ app.post("/v1/admin/chat", (req, res) => {
   });
 });
 
-app.listen(port, () => {
+app.listen(process.env.PORT, ) => {
   console.log(`ai-assistant-api up on :${port}`);
 });
+\nconsole.log('Service listening on', process.env.PORT);
