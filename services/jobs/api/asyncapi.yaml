@@ -1,0 +1,24 @@
+asyncapi: '2.6.0'
+info: { title: BlueDoor Jobs Events, version: '0.1.0' }
+defaultContentType: application/json
+channels:
+  jobs.job.created:
+    publish:
+      message:
+        name: jobCreated
+        payload: { $ref: '#/components/schemas/JobEvent' }
+  jobs.job.completed:
+    publish:
+      message:
+        name: jobCompleted
+        payload: { $ref: '#/components/schemas/JobEvent' }
+components:
+  schemas:
+    JobEvent:
+      type: object
+      required: [eventId, jobId, occurredAt]
+      properties:
+        eventId: { type: string, format: uuid }
+        jobId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+        payload: { type: object }

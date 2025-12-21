@@ -1,0 +1,11 @@
+groups:
+  - name: bluedoor_predictive_alerts
+    rules:
+      - alert: ErrorRateTrendWarning
+        expr: job:http_errors:rate5m > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Error rate trend detected (read-only)"
+          description: "No automation. Investigate."

@@ -1,0 +1,19 @@
+asyncapi: '2.6.0'
+info: { title: BlueDoor Billing Events, version: '0.1.0' }
+defaultContentType: application/json
+channels:
+  billing.invoice.issued:
+    publish:
+      message:
+        name: invoiceIssued
+        payload: { $ref: '#/components/schemas/InvoiceEvent' }
+components:
+  schemas:
+    InvoiceEvent:
+      type: object
+      required: [eventId, invoiceId, occurredAt]
+      properties:
+        eventId: { type: string, format: uuid }
+        invoiceId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+        payload: { type: object }

@@ -1,0 +1,5 @@
+groups:
+  - name: bluedoor_recording_rules
+    rules:
+      - record: job:http_errors:rate5m
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m]))

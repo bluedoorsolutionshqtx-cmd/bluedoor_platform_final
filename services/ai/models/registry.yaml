@@ -1,0 +1,5 @@
+models:
+  - id: bd-ai-planner-v0
+    purpose: "Planning + recommendations"
+    updated: "2025-12-20"
+    notes: "Baseline registry entry"

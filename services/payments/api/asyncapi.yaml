@@ -1,0 +1,24 @@
+asyncapi: '2.6.0'
+info: { title: BlueDoor Payments Events, version: '0.1.0' }
+defaultContentType: application/json
+channels:
+  payments.payment.received:
+    publish:
+      message:
+        name: paymentReceived
+        payload: { $ref: '#/components/schemas/PaymentEvent' }
+  payments.payment.failed:
+    publish:
+      message:
+        name: paymentFailed
+        payload: { $ref: '#/components/schemas/PaymentEvent' }
+components:
+  schemas:
+    PaymentEvent:
+      type: object
+      required: [eventId, paymentId, occurredAt]
+      properties:
+        eventId: { type: string, format: uuid }
+        paymentId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+        payload: { type: object }
