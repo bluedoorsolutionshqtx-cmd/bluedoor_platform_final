@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bluedoor.local/schemas/ops-artifact.schema.json",
+  "title": "Ops-AI Artifact",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["status", "warnings", "metrics", "timestamp"],
+  "properties": {
+    "status": { "type": "string", "minLength": 1 },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["number", "integer", "string", "boolean", "null"]
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -18,4 +18,7 @@ node ops-ai/risk/classifier.mjs
 echo "[5/5] RAG manifest refresh"
 node ops-ai/rag/build-manifest.mjs
 
+echo "[6/6] Validate artifacts"
+node ops-ai/tools/validate-artifacts.mjs
+
 echo "CI PASSED (local)"
