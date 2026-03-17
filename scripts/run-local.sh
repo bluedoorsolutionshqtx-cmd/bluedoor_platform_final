@@ -9,4 +9,7 @@ AUTH_PID=$!
 pnpm -C services/core-api start &
 CORE_PID=$!
 
-wait $AUTH_PID $CORE_PID
+pnpm -C services/gateway start &
+GATEWAY_PID=$!
+
+wait $AUTH_PID $CORE_PID $GATEWAY_PID
