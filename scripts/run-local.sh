@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-echo "Starting core services..."
+echo "Starting local platform services..."
+
+pnpm -C services/registry start &
+REGISTRY_PID=$!
 
 pnpm -C services/auth start &
 AUTH_PID=$!
@@ -12,4 +15,4 @@ CORE_PID=$!
 pnpm -C services/gateway start &
 GATEWAY_PID=$!
 
-wait $AUTH_PID $CORE_PID $GATEWAY_PID
+wait $REGISTRY_PID $AUTH_PID $CORE_PID $GATEWAY_PID
