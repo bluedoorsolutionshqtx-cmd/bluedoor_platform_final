@@ -1,0 +1,12 @@
+agent: bluedoor_routing_agent
+
+actions:
+  routing.optimize_vrp:
+    description: Optimize routing for crews
+    handler: ai/agents/bluedoor_routing_agent/handler.js
+    riskLevel: low
+
+  routing.publish_plan:
+    description: Publish routing plan
+    handler: ai/agents/bluedoor_routing_agent/handler.js
+    riskLevel: medium

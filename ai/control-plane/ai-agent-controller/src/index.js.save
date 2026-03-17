@@ -1,0 +1,24 @@
+"use strict";
+
+const { loadContracts } = require("./contracts");
+const { executeWithAuthorization } = require("./executeWithAuthorization");
+
+// approval processor may exist with different export styles; load safely
+let processApprovals = null;
+try {
+  const ap = require("./approvalProcessor");
+  processApprovals =
+    (typeof ap === "function" && ap) ||
+    ap.processApprovals ||
+    ap.run ||
+    null;
+} catch (_) {
+  processApprovals = null;
+}
+
+/**
+ * Example agent implementations (stubbed).
+ * These are the functions we execute after auth/approval.
+ */
+const routingAgent = {
+  async

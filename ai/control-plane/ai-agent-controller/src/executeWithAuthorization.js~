@@ -1,0 +1,203 @@
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+
+const DATA_DIR = path.join(__dirname, "..", "data");
+const AUDIT_DIR = path.join(DATA_DIR, "audit");
+const APPROVALS_DIR = path.join(DATA_DIR, "approvals");
+
+function ensureDirs() {
+  fs.mkdirSync(AUDIT_DIR, { recursive: true });
+  fs.mkdirSync(APPROVALS_DIR, { recursive: true });
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function uuid() {
+  // Node 24 has crypto.randomUUID
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return crypto.randomBytes(16).toString("hex");
+}
+
+function appendAudit(event) {
+  ensureDirs();
+  const file = path.join(AUDIT_DIR, "decisions.jsonl");
+  fs.appendFileSync(file, JSON.stringify(event) + "\n", "utf8");
+  return file;
+}
+
+function writeApprovalRequest(payload) {
+  ensureDirs();
+  const ts = Date.now();
+  const safeId = String(payload.decisionId || uuid());
+  const filePath = path.join(APPROVALS_DIR, `${ts}-${safeId}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), "utf8");
+  return filePath;
+}
+
+function authorize(contracts, req) {
+  const decisionId = uuid();
+
+  const agentName = req && req.agentName;
+  const actionId = req && req.actionId;
+
+  const contract = agentName ? contracts[agentName] : null;
+  const contractVersion =
+    contract && contract.metadata && contract.metadata.version
+      ? String(contract.metadata.version)
+      : "unknown";
+
+  if (!agentName || !actionId) {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      decisionId,
+      contractVersion,
+      reason: "Missing agentName or actionId",
+    };
+  }
+
+  if (!contract) {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      decisionId,
+      contractVersion,
+      reason: `No contract found for agent: ${agentName}`,
+    };
+  }
+
+  const rule = contract.actions ? contract.actions[actionId] : null;
+  if (!rule) {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      decisionId,
+      contractVersion,
+      reason: `Forbidden action: ${actionId}`,
+    };
+  }
+
+  // blast radius guard (jobs_affected only)
+  const limit =
+    rule.blastRadius && typeof rule.blastRadius.jobs_affected === "number"
+      ? rule.blastRadius.jobs_affected
+      : null;
+
+  const jobsAffected =
+    req &&
+    req.context &&
+    req.context.blast_radius &&
+    typeof req.context.blast_radius.jobs_affected === "number"
+      ? req.context.blast_radius.jobs_affected
+      : null;
+
+  if (limit !== null && jobsAffected !== null && jobsAffected > limit) {
+    return {
+      allowed: false,
+      requiresApproval: false,
+      decisionId,
+      contractVersion,
+      reason: `Blast radius jobs_affected=${jobsAffected} exceeds limit ${limit}`,
+    };
+  }
+
+  return {
+    allowed: !!rule.allowed,
+    requiresApproval: !!rule.requiresApproval,
+    decisionId,
+    contractVersion,
+    riskLevel: rule.riskLevel || "unknown",
+  };
+}
+
+/**
+ * req = { agentName, actionId, confidence, params, context }
+ * handler = async (req) => any
+ */
+async function executeWithAuthorization(contracts, req, handler) {
+  const decision = authorize(contracts, req);
+
+  appendAudit({
+    ts: nowIso(),
+    event: "auth.decision",
+    decisionId: decision.decisionId,
+    agentName: req && req.agentName,
+    actionId: req && req.actionId,
+    allowed: decision.allowed,
+    requiresApproval: decision.requiresApproval,
+    contractVersion: decision.contractVersion,
+    reason: decision.reason || null,
+  });
+
+  if (!decision.allowed) {
+    return {
+      status: "DENIED",
+      decision,
+    };
+  }
+
+  if (decision.requiresApproval) {
+    const approvalPayload = {
+      ts: nowIso(),
+      event: "approval.requested",
+      status: "PENDING_APPROVAL",
+      decisionId: decision.decisionId,
+      contractVersion: decision.contractVersion,
+      agentName: req.agentName,
+      actionId: req.actionId,
+      confidence: req.confidence,
+      params: req.params || {},
+      context: req.context || {},
+    };
+
+    const filePath = writeApprovalRequest(approvalPayload);
+
+    appendAudit({
+      ts: nowIso(),
+      event: "approval.queued",
+      decisionId: decision.decisionId,
+      agentName: req.agentName,
+      actionId: req.actionId,
+      filePath,
+    });
+
+    return {
+      status: "PENDING_APPROVAL",
+      decision,
+      queue: { queued: true, filePath },
+    };
+  }
+
+  appendAudit({
+    ts: nowIso(),
+    event: "exec.started",
+    decisionId: decision.decisionId,
+    agentName: req.agentName,
+    actionId: req.actionId,
+  });
+
+  const result = await handler(req);
+
+  appendAudit({
+    ts: nowIso(),
+    event: "exec.succeeded",
+    decisionId: decision.decisionId,
+    agentName: req.agentName,
+    actionId: req.actionId,
+  });
+
+  return {
+    status: "EXECUTED",
+    decision,
+    result,
+  };
+}
+
+module.exports = {
+  executeWithAuthorization,
+};

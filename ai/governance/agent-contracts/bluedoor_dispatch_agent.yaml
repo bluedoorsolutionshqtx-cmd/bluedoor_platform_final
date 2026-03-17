@@ -1,0 +1,7 @@
+agent: bluedoor_dispatch_agent
+
+actions:
+  dispatch.assign_job:
+    description: Assign job to crew
+    handler: ai/agents/bluedoor_dispatch_agent/handler.js
+    riskLevel: low

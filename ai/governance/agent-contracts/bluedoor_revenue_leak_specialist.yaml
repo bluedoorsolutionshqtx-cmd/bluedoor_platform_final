@@ -1,0 +1,7 @@
+agent: bluedoor_revenue_leak_specialist
+
+actions:
+  revenue.detect_leak:
+    description: Detect revenue leakage
+    handler: ai/agents/bluedoor_revenue_leak_specialist/handler.js
+    riskLevel: medium

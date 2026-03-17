@@ -1,0 +1,24 @@
+{
+  "ts": "2026-03-07T22:16:17.119Z",
+  "status": "EXECUTED",
+  "decisionId": "27cec823-b1a2-4323-a8a6-687bffcf2d4b",
+  "agentName": "bluedoor_routing_agent",
+  "actionId": "routing.publish_plan",
+  "params": {
+    "planId": "plan-xyz"
+  },
+  "context": {
+    "blast_radius": {
+      "jobs_affected": 24
+    }
+  },
+  "approvedAt": "2026-03-11T03:01:19.081Z",
+  "approvedBy": "admin",
+  "signature": "af4f54ac88380a773d740bc2f668c8fa5090062fbc9a88d24545861c0483af60",
+  "event": "approval.executed",
+  "executedAt": "2026-03-11T03:01:29.742Z",
+  "result": {
+    "published": true,
+    "planId": "plan-xyz"
+  }
+}

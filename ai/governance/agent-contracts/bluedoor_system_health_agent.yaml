@@ -1,0 +1,7 @@
+agent: bluedoor_system_health_agent
+
+actions:
+  system.check_health:
+    description: Check system status
+    handler: ai/agents/bluedoor_system_health_agent/handler.js
+    riskLevel: low

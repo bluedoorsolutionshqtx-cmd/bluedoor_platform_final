@@ -1,0 +1,19 @@
+{
+  "event": "approval.requested",
+  "decisionId": "e035c106-3563-4ced-ae36-8a765bbd1bbf",
+  "agentName": "bluedoor_routing_agent",
+  "actionId": "routing.publish_plan",
+  "confidence": 0.95,
+  "params": {
+    "plan_id": "plan-xyz"
+  },
+  "context": {
+    "env": "dev",
+    "tenant": "*",
+    "blast_radius": {
+      "jobs_affected": 12,
+      "crews_affected": 2
+    }
+  },
+  "contractVersion": "1.0.0"
+}

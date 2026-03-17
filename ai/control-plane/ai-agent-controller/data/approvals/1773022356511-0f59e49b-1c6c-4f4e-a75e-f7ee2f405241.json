@@ -1,0 +1,21 @@
+{
+  "ts": "2026-03-07T00:00:00Z",
+  "status": "EXECUTED",
+  "decisionId": "0f59e49b-1c6c-4f4e-a75e-f7ee2f405241",
+  "agentName": "bluedoor_routing_agent",
+  "actionId": "routing.publish_plan",
+  "params": {
+    "planId": "plan-xyz"
+  },
+  "context": {
+    "blast_radius": {
+      "jobs_affected": 24
+    }
+  },
+  "event": "approval.executed",
+  "executedAt": "2026-03-09T02:19:14.093Z",
+  "result": {
+    "published": true,
+    "planId": "plan-xyz"
+  }
+}

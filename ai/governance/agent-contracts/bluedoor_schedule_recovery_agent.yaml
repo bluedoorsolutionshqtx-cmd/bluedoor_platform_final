@@ -1,0 +1,7 @@
+agent: bluedoor_schedule_recovery_agent
+
+actions:
+  schedule.recover:
+    description: Recover failed schedules
+    handler: ai/agents/bluedoor_schedule_recovery_agent/handler.js
+    riskLevel: medium

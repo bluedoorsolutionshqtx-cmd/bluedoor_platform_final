@@ -7,7 +7,6 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "core-api", ts: Date.now() });
 });
 
-app.listen(process.env.PORT, ) => {
-  console.log(`core-api up on :${port}`);
+app.listen(port, () => {
+  console.log("Service listening on", port);
 });
-\nconsole.log('Service listening on', process.env.PORT);

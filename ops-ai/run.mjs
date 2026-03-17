@@ -28,6 +28,7 @@ await import("./tools/validate-artifacts.mjs");
 // ---- Snapshot ----
 console.log("[Ops-AI] Snapshot");
 await import("./tools/write-snapshot.mjs");
+await import("./tools/write-metrics.mjs");
 
 console.log(JSON.stringify({
   status: "ok",
