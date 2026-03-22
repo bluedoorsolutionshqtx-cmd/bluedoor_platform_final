@@ -1,15 +1,29 @@
 "use strict";
 
-async function recordAuditEvent(event) {
-  console.log("Audit event (dev mode):");
-  console.log(JSON.stringify(event, null, 2));
+const db = require("../db");
 
-  return {
-    stored: true,
-    storage: "dev-memory"
-  };
+async function recordAuditEvent(event) {
+  await db.query(
+    `
+    INSERT INTO audit_events (
+      event_type,
+      agent_name,
+      action_id,
+      decision_id,
+      execution_id,
+      payload
+    )
+    VALUES ($1,$2,$3,$4,$5,$6)
+    `,
+    [
+      event.eventType,
+      event.agentName,
+      event.actionId,
+      event.decisionId,
+      event.executionId || null,
+      JSON.stringify(event.payload || {})
+    ]
+  );
 }
 
-module.exports = {
-  recordAuditEvent
-};
+module.exports = { recordAuditEvent };

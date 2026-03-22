@@ -1,13 +1,14 @@
 "use strict";
 
-const { loadContracts } = require("./contracts");
+const { loadContracts, getContract } = require("./contracts");
 const { buildRegistry, getActionHandler } = require("./registry");
 const executeWithAuthorization = require("./executeWithAuthorization");
 const eventBus = require("./eventBus");
 
 async function main() {
+  // Start event listener (non-blocking)
   eventBus.subscribe("*", async (event) => {
-    console.log("EVENT =", event.eventType || event.event_type);
+    console.log("EVENT =", event.eventType);
   });
 
   const raw = process.argv[2];
@@ -22,6 +23,7 @@ async function main() {
   console.log("DEBUG index.js request =", JSON.stringify(request, null, 2));
 
   const contracts = loadContracts();
+const contract = getContract(contracts, request.actionId);
   const registry = buildRegistry(contracts);
 
   console.log("Loaded", Object.keys(contracts).length, "agent contracts");
@@ -38,18 +40,22 @@ async function main() {
     process.exit(1);
   }
 
-  const result = await executeWithAuthorization({
+  const result = await executeWithAuthorization(
+  {
     agentName: request.agentName,
     actionId: request.actionId,
     params: request.params,
     context: request.context,
     confidence: request.confidence
-  });
+  },
+  contract
+);
 
   console.log("Result =", JSON.stringify(result, null, 2));
 }
 
+// CRITICAL: actually run the async function properly
 main().catch((err) => {
-  console.error(err);
+  console.error("Fatal error:", err);
   process.exit(1);
 });

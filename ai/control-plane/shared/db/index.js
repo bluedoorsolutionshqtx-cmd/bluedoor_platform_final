@@ -2,12 +2,12 @@
 
 const { Pool } = require("pg");
 
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL not set");
+}
+
 const pool = new Pool({
-  host: process.env.BLUEDOOR_PG_HOST || "127.0.0.1",
-  port: Number(process.env.BLUEDOOR_PG_PORT || 5432),
-  database: process.env.BLUEDOOR_PG_DATABASE || "bluedoor_ai",
-  user: process.env.BLUEDOOR_PG_USER || "postgres",
-  password: process.env.BLUEDOOR_PG_PASSWORD || "postgres"
+  connectionString: process.env.DATABASE_URL
 });
 
 async function query(text, params = []) {

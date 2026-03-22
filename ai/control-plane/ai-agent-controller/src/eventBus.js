@@ -2,136 +2,169 @@
 
 const { createClient } = require("redis");
 
-const STREAM_KEY = process.env.AI_EVENT_STREAM || "bluedoor:ai:events";
-const GROUP_NAME = process.env.AI_EVENT_GROUP || "ai-controller";
-const CONSUMER_NAME =
+const REDIS_URL = process.env.REDIS_URL;
+const AI_EVENT_STREAM = process.env.AI_EVENT_STREAM || "bluedoor:ai:events";
+const AI_EVENT_GROUP = process.env.AI_EVENT_GROUP || "ai-control-plane";
+const AI_EVENT_CONSUMER =
   process.env.AI_EVENT_CONSUMER || `consumer-${process.pid}`;
 
-let pubClient = null;
-let subClient = null;
-let initialized = false;
-let usingRedis = false;
-let inMemorySubscribers = [];
+if (!REDIS_URL) {
+  throw new Error("REDIS_URL is not set");
+}
+
+let pubClient;
+let subClient;
+const handlers = new Map();
 
 async function ensureClients() {
-  if (initialized) return;
-
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
-    initialized = true;
-    usingRedis = false;
-    console.warn("EventBus running in local fallback mode: REDIS_URL not set");
-    return;
+  if (!pubClient) {
+    pubClient = createClient({ url: REDIS_URL });
+    pubClient.on("error", (err) => {
+      console.error("Redis pub client error:", err.message);
+    });
+    await pubClient.connect();
   }
 
-  pubClient = createClient({ url: redisUrl });
-  subClient = createClient({ url: redisUrl });
+  if (!subClient) {
+    subClient = createClient({ url: REDIS_URL });
+    subClient.on("error", (err) => {
+      console.error("Redis sub client error:", err.message);
+    });
+    await subClient.connect();
+  }
+}
 
-  pubClient.on("error", (err) => {
-    console.error("Redis pub client error:", err.message);
-  });
-
-  subClient.on("error", (err) => {
-    console.error("Redis sub client error:", err.message);
-  });
-
-  await pubClient.connect();
-  await subClient.connect();
+async function ensureGroup() {
+  await ensureClients();
 
   try {
-    await pubClient.xGroupCreate(STREAM_KEY, GROUP_NAME, "0", {
-      MKSTREAM: true
-    });
+    await pubClient.xGroupCreate(
+      AI_EVENT_STREAM,
+      AI_EVENT_GROUP,
+      "0",
+      { MKSTREAM: true }
+    );
   } catch (err) {
     if (!String(err.message).includes("BUSYGROUP")) {
       throw err;
     }
   }
-
-  initialized = true;
-  usingRedis = true;
 }
 
-function normalizeEvent(eventType, payload = {}) {
+function serializeEvent(eventType, payload) {
   return {
     eventType,
     timestamp: new Date().toISOString(),
-    payload
+    payload: JSON.stringify(payload || {})
+  };
+}
+
+function deserializeMessage(messageId, fields) {
+  const eventType = fields.eventType;
+  const timestamp = fields.timestamp;
+  let payload = {};
+
+  try {
+    payload = fields.payload ? JSON.parse(fields.payload) : {};
+  } catch (err) {
+    console.error("Failed to parse event payload:", err.message);
+  }
+
+  return {
+    id: messageId,
+    eventType,
+    timestamp,
+    ...payload
   };
 }
 
 async function emitEvent(eventType, payload = {}) {
-  await ensureClients();
+  await ensureGroup();
 
-  const event = normalizeEvent(eventType, payload);
+  const messageId = await pubClient.xAdd(
+    AI_EVENT_STREAM,
+    "*",
+    serializeEvent(eventType, payload)
+  );
+
   console.log(`EVENT = ${eventType}`);
-
-  if (!usingRedis) {
-    for (const sub of inMemorySubscribers) {
-      if (sub.eventType === "*" || sub.eventType === eventType) {
-        await sub.handler(event);
-      }
-    }
-    return event;
-  }
-
-  await pubClient.xAdd(STREAM_KEY, "*", {
-    eventType: event.eventType,
-    timestamp: event.timestamp,
-    payload: JSON.stringify(event.payload)
-  });
-
-  return event;
+  return messageId;
 }
 
 async function subscribe(eventType, handler) {
-  await ensureClients();
-
-  if (!usingRedis) {
-    inMemorySubscribers.push({ eventType, handler });
-    return;
+  if (!eventType || typeof handler !== "function") {
+    throw new Error("subscribe requires eventType and handler");
   }
+
+  await ensureGroup();
+
+  if (!handlers.has(eventType)) {
+    handlers.set(eventType, []);
+  }
+
+  handlers.get(eventType).push(handler);
 
   const loop = async () => {
     while (true) {
       try {
         const response = await subClient.xReadGroup(
-          GROUP_NAME,
-          CONSUMER_NAME,
-          [{ key: STREAM_KEY, id: ">" }],
+          AI_EVENT_GROUP,
+          AI_EVENT_CONSUMER,
+          [{ key: AI_EVENT_STREAM, id: ">" }],
           { COUNT: 10, BLOCK: 5000 }
         );
 
-        if (!response) continue;
+        if (!response) {
+          continue;
+        }
 
         for (const stream of response) {
           for (const message of stream.messages) {
-            const values = message.message;
-            const event = {
-              eventType: values.eventType,
-              timestamp: values.timestamp,
-              payload: values.payload ? JSON.parse(values.payload) : {}
-            };
+            const event = deserializeMessage(message.id, message.message);
 
-            if (eventType === "*" || event.eventType === eventType) {
-              await handler(event);
+            if (event.eventType !== eventType) {
+              await subClient.xAck(
+                AI_EVENT_STREAM,
+                AI_EVENT_GROUP,
+                message.id
+              );
+              continue;
             }
 
-            await subClient.xAck(STREAM_KEY, GROUP_NAME, message.id);
+            const eventHandlers = handlers.get(eventType) || [];
+
+            try {
+              for (const fn of eventHandlers) {
+                await fn(event);
+              }
+
+              await subClient.xAck(
+                AI_EVENT_STREAM,
+                AI_EVENT_GROUP,
+                message.id
+              );
+            } catch (err) {
+              console.error(
+                `Event handler failed for ${eventType}:`,
+                err.message
+              );
+            }
           }
         }
       } catch (err) {
-        console.error("Redis event loop error:", err.message);
+        console.error("Redis subscription loop error:", err.message);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
   };
 
   loop().catch((err) => {
-    console.error("Event subscription crashed:", err.message);
+    console.error("Subscription worker crashed:", err.message);
   });
 }
 
 module.exports = {
   emitEvent,
-  subscribe
+  subscribe,
+  ensureGroup
 };

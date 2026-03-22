@@ -1,115 +1,195 @@
 "use strict";
 
-const fs = require("fs");
-const path = require("path");
+const eventBus = require("../../ai-agent-controller/src/eventBus");
+const approvalsRepo = require("../../shared/repos/approvalsRepo");
+const auditRepo = require("../../shared/repos/auditRepo");
 
-const APPROVALS_DIR = path.resolve(
-  __dirname,
-  "../../ai-agent-controller/data/approvals"
-);
-
-function ensureDir() {
-  fs.mkdirSync(APPROVALS_DIR, { recursive: true });
+async function safeAudit(event) {
+  try {
+    await auditRepo.recordAuditEvent(event);
+  } catch (err) {
+    console.error("Approval service audit write failed:", err.message);
+  }
 }
 
-function readJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
-}
+async function storeApprovalRequest(event) {
+  const payload = event.payload || {};
 
-function writeJson(filePath, data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
-}
-
-function listPendingApprovals() {
-  ensureDir();
-
-  const files = fs.readdirSync(APPROVALS_DIR)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => path.join(APPROVALS_DIR, f));
-
-  return files
-    .map((filePath) => {
-      try {
-        const data = readJson(filePath);
-        return {
-          file: path.basename(filePath),
-          filePath,
-          status: data.status,
-          decisionId: data.decisionId,
-          agentName: data.agentName,
-          actionId: data.actionId,
-          risk: data.risk || null
-        };
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean)
-    .filter((x) => x.status === "PENDING_APPROVAL");
-}
-
-function findApprovalFile(fileOrDecisionId) {
-  ensureDir();
-
-  const files = fs.readdirSync(APPROVALS_DIR).filter((f) => f.endsWith(".json"));
-
-  let match = files.find((f) => f === fileOrDecisionId);
-
-  if (!match) {
-    match = files.find((f) => f.includes(fileOrDecisionId));
+  if (!event.decisionId) {
+    throw new Error("approval.required missing decisionId");
   }
 
-  if (!match) {
-    return null;
+  const approvalRecord = {
+    decisionId: event.decisionId,
+    agentName: event.agentName,
+    actionId: event.actionId,
+    status: "PENDING",
+    reason:
+      payload.reason ||
+      payload.policy?.reason ||
+      "Approval required",
+    risk: payload.risk || null,
+    input: payload.input || {},
+    context: payload.context || {}
+  };
+
+  if (typeof approvalsRepo.createApproval === "function") {
+    return approvalsRepo.createApproval(approvalRecord);
   }
 
-  return path.join(APPROVALS_DIR, match);
-}
-
-function approveApproval(fileOrDecisionId, approvedBy = "admin") {
-  const filePath = findApprovalFile(fileOrDecisionId);
-  if (!filePath) {
-    throw new Error(`Approval not found: ${fileOrDecisionId}`);
+  if (typeof approvalsRepo.create === "function") {
+    return approvalsRepo.create(approvalRecord);
   }
 
-  const approval = readJson(filePath);
-  approval.status = "APPROVED";
-  approval.approvedBy = approvedBy;
-  approval.approvedAt = new Date().toISOString();
+  if (typeof approvalsRepo.saveApproval === "function") {
+    return approvalsRepo.saveApproval(approvalRecord);
+  }
 
-  writeJson(filePath, approval);
+  console.warn(
+    "approvalsRepo has no createApproval/create/saveApproval function; using in-memory approval object"
+  );
 
   return {
-    ok: true,
-    file: path.basename(filePath),
-    status: approval.status,
-    decisionId: approval.decisionId
+    approval_id: `apr_${event.decisionId}`,
+    ...approvalRecord
   };
 }
 
-function denyApproval(fileOrDecisionId, deniedBy = "admin") {
-  const filePath = findApprovalFile(fileOrDecisionId);
-  if (!filePath) {
-    throw new Error(`Approval not found: ${fileOrDecisionId}`);
+async function markApproved(approvalRecord) {
+  const approvalId =
+    approvalRecord?.approval_id ||
+    approvalRecord?.approvalId ||
+    approvalRecord?.id ||
+    null;
+
+  if (!approvalId) {
+    return approvalRecord;
   }
 
-  const approval = readJson(filePath);
-  approval.status = "DENIED";
-  approval.deniedBy = deniedBy;
-  approval.deniedAt = new Date().toISOString();
+  if (typeof approvalsRepo.markApproved === "function") {
+    return approvalsRepo.markApproved(approvalId);
+  }
 
-  writeJson(filePath, approval);
+  if (typeof approvalsRepo.approve === "function") {
+    return approvalsRepo.approve(approvalId);
+  }
+
+  if (typeof approvalsRepo.updateStatus === "function") {
+    return approvalsRepo.updateStatus(approvalId, "APPROVED");
+  }
 
   return {
-    ok: true,
-    file: path.basename(filePath),
-    status: approval.status,
-    decisionId: approval.decisionId
+    ...approvalRecord,
+    status: "APPROVED"
   };
 }
 
-module.exports = {
-  listPendingApprovals,
-  approveApproval,
-  denyApproval
-};
+async function emitApprovalGranted(event, approvalRecord) {
+  const payload = event.payload || {};
+
+  await eventBus.emitEvent("approval.granted", {
+    decisionId: event.decisionId,
+    approvalId:
+      approvalRecord?.approval_id ||
+      approvalRecord?.approvalId ||
+      approvalRecord?.id ||
+      null,
+    agentName: event.agentName,
+    actionId: event.actionId,
+    input: payload.input || {},
+    context: payload.context || {},
+    reason:
+      payload.reason ||
+      payload.policy?.reason ||
+      "Approval granted"
+  });
+}
+
+async function emitExecutionRequested(event) {
+  const payload = event.payload || {};
+
+  await eventBus.emitEvent("execution.requested", {
+    decisionId: event.decisionId,
+    agentName: event.agentName,
+    actionId: event.actionId,
+    input: payload.input || {},
+    context: payload.context || {}
+  });
+}
+
+async function handleApprovalRequired(event) {
+  console.log(
+    "APPROVAL SERVICE received approval.required =",
+    JSON.stringify(event, null, 2)
+  );
+
+  const approvalRecord = await storeApprovalRequest(event);
+
+  await safeAudit({
+    eventType: "APPROVAL_RECORDED",
+    agentName: event.agentName,
+    actionId: event.actionId,
+    decisionId: event.decisionId,
+    payload: {
+      approvalId:
+        approvalRecord?.approval_id ||
+        approvalRecord?.approvalId ||
+        approvalRecord?.id ||
+        null,
+      status: approvalRecord?.status || "PENDING",
+      reason: approvalRecord?.reason || null
+    }
+  });
+
+  const approvedRecord = await markApproved(approvalRecord);
+
+  await safeAudit({
+    eventType: "APPROVAL_GRANTED",
+    agentName: event.agentName,
+    actionId: event.actionId,
+    decisionId: event.decisionId,
+    payload: {
+      approvalId:
+        approvedRecord?.approval_id ||
+        approvedRecord?.approvalId ||
+        approvedRecord?.id ||
+        null,
+      status: approvedRecord?.status || "APPROVED"
+    }
+  });
+
+  await emitApprovalGranted(event, approvedRecord);
+  await emitExecutionRequested(event);
+
+  console.log(
+    "APPROVAL SERVICE granted approval and emitted execution.requested for decisionId =",
+    event.decisionId
+  );
+}
+
+async function main() {
+  console.log("Approval service starting...");
+
+  await eventBus.subscribe("approval.required", async (event) => {
+    try {
+      await handleApprovalRequired(event);
+    } catch (err) {
+      console.error("Approval service fatal handler error:", err);
+
+      await safeAudit({
+        eventType: "APPROVAL_FAILED",
+        agentName: event?.agentName || null,
+        actionId: event?.actionId || null,
+        decisionId: event?.decisionId || null,
+        payload: {
+          error: err.message
+        }
+      });
+    }
+  });
+}
+
+main().catch((err) => {
+  console.error("Approval service startup failed:", err);
+  process.exit(1);
+});

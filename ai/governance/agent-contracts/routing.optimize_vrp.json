@@ -1,0 +1,8 @@
+{
+  "actionId": "routing.optimize_vrp",
+  "agentName": "bluedoor_routing_agent",
+  "requiredParams": ["jobs", "crews"],
+  "riskLevel": "low",
+  "requiresApproval": false,
+  "minConfidence": 0.5
+}
