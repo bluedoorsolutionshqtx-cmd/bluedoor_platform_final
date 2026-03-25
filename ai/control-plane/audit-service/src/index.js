@@ -19,18 +19,18 @@ async function storeAuditEvent(event) {
   delete payload.eventType;
   delete payload.timestamp;
 
-  if (typeof auditRepo.recordAuditEvent !== "function") {
-    throw new Error("auditRepo.recordAuditEvent is not available");
+  if (typeof auditRepo.recordAuditEvent === "function") {
+    return auditRepo.recordAuditEvent({
+      eventType: event.eventType.toUpperCase().replace(/\./g, "_"),
+      agentName: event.agentName || null,
+      actionId: event.actionId || null,
+      decisionId: event.decisionId || null,
+      executionId: event.executionId || null,
+      payload
+    });
   }
 
-  return auditRepo.recordAuditEvent({
-    eventType: String(event.eventType || "").toUpperCase().replace(/\./g, "_"),
-    agentName: event.agentName || null,
-    actionId: event.actionId || null,
-    decisionId: event.decisionId || null,
-    executionId: event.executionId || null,
-    payload
-  });
+  throw new Error("auditRepo.recordAuditEvent is not available");
 }
 
 async function handleEvent(event) {
@@ -40,8 +40,7 @@ async function handleEvent(event) {
       {
         eventType: event.eventType,
         decisionId: event.decisionId || null,
-        actionId: event.actionId || null,
-        executionId: event.executionId || null
+        actionId: event.actionId || null
       },
       null,
       2
@@ -63,4 +62,13 @@ async function main() {
       try {
         await handleEvent(event);
       } catch (err) {
-        console.error(`AUD
+        console.error(`AUDIT SERVICE failed for ${eventType}:`, err.message);
+      }
+    });
+  }
+}
+
+main().catch((err) => {
+  console.error("Audit service startup failed:", err);
+  process.exit(1);
+});
