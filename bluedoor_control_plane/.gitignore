@@ -1,0 +1,39 @@
+# system
+.bash*
+.ssh/
+.git-credentials
+.cache/
+.config/
+.local/
+.tmp/
+tmp/
+
+# node
+node_modules/
+npm-debug.log
+pnpm-lock.yaml
+
+# pm2
+.pm2/
+
+# postgres
+pgdata/
+*.pid
+
+# archives
+*.tar.gz
+*.zip
+*.gz
+
+# backups
+backup/
+restore/
+*.bak
+
+# env
+.env
+
+# misc
+downloads/
+storage/
+tarballs/
