@@ -37,3 +37,15 @@ restore/
 downloads/
 storage/
 tarballs/
+
+# bluedoor projects (exclude old work)
+bluedoor/
+bluedoor-phoenix/
+bluedoor_platform/
+bluedoor_platform_final/
+bluedoor_stack_v2/
+bluedoor_restore_auto/
+merge-workspace-*/
+
+# runtime files
+dump.rdb
