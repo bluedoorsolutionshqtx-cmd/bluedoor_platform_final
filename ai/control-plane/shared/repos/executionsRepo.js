@@ -17,14 +17,45 @@ function mapRow(row) {
   return {
     executionId: row.execution_id,
     decisionId: row.decision_id,
+    agentName: row.agent_name || null,
+    actionId: row.action_id || null,
     status: row.status,
     created_at: row.created_at
   };
 }
 
+async function getExecutionByDecisionId(decisionId) {
+  if (!decisionId) return null;
+
+  const result = await db.query(
+    `
+    SELECT execution_id, decision_id, agent_name, action_id, status, created_at
+    FROM executions
+    WHERE decision_id = $1
+    ORDER BY created_at DESC
+    LIMIT 1
+    `,
+    [decisionId]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapRow(result.rows[0]);
+}
+
 async function createExecution(data) {
-  const executionId = data.executionId || buildExecutionId();
   const decisionId = data.decisionId || null;
+
+  if (decisionId) {
+    const existingByDecision = await getExecutionByDecisionId(decisionId);
+    if (existingByDecision) {
+      return existingByDecision;
+    }
+  }
+
+  const executionId = data.executionId || buildExecutionId();
   const agentName = data.agentName || null;
   const actionId = data.actionId || null;
   const status = data.status || "REQUESTED";
@@ -34,7 +65,7 @@ async function createExecution(data) {
 
   const existing = await db.query(
     `
-    SELECT execution_id, decision_id, status, created_at
+    SELECT execution_id, decision_id, agent_name, action_id, status, created_at
     FROM executions
     WHERE execution_id = $1
     LIMIT 1
@@ -59,7 +90,7 @@ async function createExecution(data) {
       error
     )
     VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb)
-    RETURNING execution_id, decision_id, status, created_at
+    RETURNING execution_id, decision_id, agent_name, action_id, status, created_at
     `,
     [executionId, decisionId, agentName, actionId, status, input, result, error]
   );
@@ -70,7 +101,7 @@ async function createExecution(data) {
 async function updateExecution(executionId, data) {
   const current = await db.query(
     `
-    SELECT execution_id, decision_id, status, created_at
+    SELECT execution_id, decision_id, agent_name, action_id, status, created_at
     FROM executions
     WHERE execution_id = $1
     LIMIT 1
@@ -112,7 +143,7 @@ async function updateExecution(executionId, data) {
     UPDATE executions
     SET ${sets.join(", ")}
     WHERE execution_id = $${i}
-    RETURNING execution_id, decision_id, status, created_at
+    RETURNING execution_id, decision_id, agent_name, action_id, status, created_at
     `,
     values
   );
@@ -138,6 +169,7 @@ async function markFailed(executionId, error) {
 
 module.exports = {
   buildExecutionId,
+  getExecutionByDecisionId,
   createExecution,
   updateExecution,
   markExecuted,
