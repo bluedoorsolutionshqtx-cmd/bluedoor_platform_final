@@ -49,3 +49,10 @@ merge-workspace-*/
 
 # runtime files
 dump.rdb
+bluedoor_*
+*.tar.gz
+*.zip
+restore/
+merge-workspace*/
+termux-packages/
+.terraform/
