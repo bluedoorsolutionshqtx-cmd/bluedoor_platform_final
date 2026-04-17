@@ -1,0 +1,20 @@
+{
+  "name": "bluedoor_control_plane",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "worker.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "express": "^5.2.1",
+    "ioredis": "^5.10.1",
+    "node-fetch": "^3.3.2",
+    "redis": "^5.11.0"
+  }
+}
