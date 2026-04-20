@@ -11,6 +11,7 @@ const pool = new Pool({
 });
 
 const app = express();
+app.get('/health',(req,res)=>res.status(200).json({status:'ok',service:'registry-service',ts:new Date().toISOString()}));
 
 app.get("/resolve/:event", async (req, res) => {
   const result = await pool.query(

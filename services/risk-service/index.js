@@ -1,6 +1,7 @@
 import express from "express";
 
 const app = express();
+app.get('/health',(req,res)=>res.status(200).json({status:'ok',service:'risk-service',ts:new Date().toISOString()}));
 app.use(express.json());
 
 app.post("/score", (req, res) => {

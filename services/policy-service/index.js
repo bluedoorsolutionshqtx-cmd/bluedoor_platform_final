@@ -11,6 +11,7 @@ const pool = new Pool({
 });
 
 const app = express();
+app.get('/health',(req,res)=>res.status(200).json({status:'ok',service:'policy-service',ts:new Date().toISOString()}));
 app.use(express.json());
 
 app.post("/decide", async (req, res) => {
