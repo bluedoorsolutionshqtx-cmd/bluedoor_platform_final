@@ -1,18 +1,23 @@
-import express from "express";
-import { db } from "./lib/db.js";
+import express from 'express';
+import { subscribe } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
+import { pool } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/db/index.js';
 
 const app = express();
 app.use(express.json());
 
-app.post("/store", async (req, res) => {
-  const { action, outcome } = req.body;
+subscribe('memory-service','action.logged', async (data) => {
+  console.log('MEMORY RECEIVED:', data);
 
-  await db.query(
-    "INSERT INTO agent_memory(action, outcome) VALUES($1, $2)",
-    [action, outcome]
+  await pool.query(
+    'INSERT INTO memory_store (data) VALUES ($1)',
+    [data]
   );
 
-  res.json({ stored: true });
+  console.log('PERSISTED TO MEMORY');
 });
 
-app.listen(3000, () => console.log("memory-service running"));
+app.get('/health', (req, res) => res.send({ status: 'ok' }));
+
+app.listen(3007, () => {
+  console.log('memory-service running on 3007');
+});

@@ -1,18 +1,23 @@
-import express from "express";
-import { db } from "./lib/db.js";
+import express from 'express';
+import { subscribe, publish } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
+import { pool } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/db/index.js';
 
 const app = express();
 app.use(express.json());
 
-app.post("/log", async (req, res) => {
-  const { action, result } = req.body;
+subscribe('audit-service','action.executed', async (data) => {
+  console.log('AUDIT RECEIVED:', data);
 
-  await db.query(
-    "INSERT INTO audit_logs(action, result) VALUES($1, $2)",
-    [action, result]
+  await pool.query(
+    'INSERT INTO audit_events (event_type, payload) VALUES ($1, $2)',
+    ['action.executed', data]
   );
 
-  res.json({ status: "logged" });
+  await publish('action.logged', data);
 });
 
-app.listen(3000, () => console.log("audit-service running"));
+app.get('/health', (req, res) => res.send({ status: 'ok' }));
+
+app.listen(3006, () => {
+  console.log('audit-service running on 3006');
+});

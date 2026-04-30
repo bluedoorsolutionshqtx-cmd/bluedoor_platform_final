@@ -1,23 +1,25 @@
 import express from 'express';
+import { subscribe, publish } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
 
 const app = express();
 app.use(express.json());
 
-// HEALTH CHECK
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    service: 'risk-engine'
+subscribe('risk-engine','action.risk_check', async (data) => {
+  console.log('RISK RECEIVED:', data);
+
+  // simple risk score
+  const riskScore = 10; // low risk
+
+  await publish('action.approval_required', {
+    ...data,
+    riskScore
   });
 });
 
-// ROOT
-app.get('/', (req, res) => {
-  res.send('Risk Engine Running');
+app.get('/health', (req, res) => {
+  res.send({ status: 'ok' });
 });
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Risk Engine running on port ${PORT}`);
+app.listen(3003, () => {
+  console.log('risk-engine running on 3003');
 });

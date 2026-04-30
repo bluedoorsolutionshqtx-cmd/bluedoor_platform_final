@@ -1,18 +1,33 @@
-const express = require('express');
+import express from 'express';
+import { subscribe, publish } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
+
 const app = express();
+app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+// basic rule engine
+function evaluatePolicy(data) {
+  if (data.riskScore && data.riskScore > 50) return 'deny';
+  return 'allow';
+}
 
-// health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'policy-service' });
+subscribe('policy-service','policy-service','action.contract_validated', async (data) => {
+  console.log('POLICY RECEIVED:', data);
+
+  const decision = evaluatePolicy(data);
+
+  if (decision === 'deny') {
+    console.log('POLICY DENIED');
+    return;
+  }
+
+  await publish('action.risk_check', {
+    ...data,
+    policy: decision
+  });
 });
 
-// basic endpoint
-app.get('/', (req, res) => {
-  res.json({ message: 'Policy Service Running' });
-});
+app.get('/health', (req, res) => res.send({ status: 'ok' }));
 
-app.listen(PORT, () => {
-  console.log(`Policy Service running on port ${PORT}`);
+app.listen(3002, () => {
+  console.log('policy-service running on 3002');
 });

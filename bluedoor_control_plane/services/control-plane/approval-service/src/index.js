@@ -1,18 +1,25 @@
-import express from "express";
-import { db } from "./lib/db.js";
+import express from 'express';
+import { subscribe, publish } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
 
 const app = express();
 app.use(express.json());
 
-app.post("/request", async (req, res) => {
-  const { action } = req.body;
+subscribe('approval-service','action.approval_required', async (data) => {
+  console.log('APPROVAL RECEIVED:', data);
 
-  const result = await db.query(
-    "INSERT INTO approvals(action, status) VALUES($1, $2) RETURNING *",
-    [action, "pending"]
-  );
+  // auto-approve for now
+  const approved = true;
 
-  res.json(result.rows[0]);
+  await publish('action.approved', {
+    ...data,
+    approved
+  });
 });
 
-app.listen(3000, () => console.log("approval-service running"));
+app.get('/health', (req, res) => {
+  res.send({ status: 'ok' });
+});
+
+app.listen(3004, () => {
+  console.log('approval-service running on 3004');
+});
