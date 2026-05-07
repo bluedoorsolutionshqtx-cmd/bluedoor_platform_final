@@ -3,12 +3,12 @@ import crypto from 'crypto';
 
 const pub = new Redis({
   host: '127.0.0.1',
-  port: 6379,
+  port: 6380,
 });
 
 const sub = new Redis({
   host: '127.0.0.1',
-  port: 6379,
+  port: 6380,
 });
 
 const CHANNEL = 'bluedoor.control_plane';
