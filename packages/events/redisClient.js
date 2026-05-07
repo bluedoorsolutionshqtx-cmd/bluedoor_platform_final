@@ -2,7 +2,7 @@ const Redis = require("ioredis");
 
 const config = {
   host: process.env.REDIS_HOST || "127.0.0.1",
-  port: process.env.REDIS_PORT || 6379,
+  port: process.env.REDIS_PORT || 6380,
   retryStrategy: (times) => Math.min(times * 50, 2000),
 };
 
