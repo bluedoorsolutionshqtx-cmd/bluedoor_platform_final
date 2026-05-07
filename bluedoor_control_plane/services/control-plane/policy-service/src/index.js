@@ -1,33 +1,39 @@
-import express from 'express';
-import { subscribe, publish } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import pinoHttp from "pino-http";
+
+import { env } from "./config/env.js";
+import { logger } from "./lib/logger.js";
+import { setupShutdown } from "./lib/shutdown.js";
+
+import healthRoutes from "./routes/health.routes.js";
 
 const app = express();
+
+app.use(helmet());
+app.use(cors());
+app.use(compression());
+
 app.use(express.json());
 
-// basic rule engine
-function evaluatePolicy(data) {
-  if (data.riskScore && data.riskScore > 50) return 'deny';
-  return 'allow';
-}
+app.use(
+  pinoHttp({
+    logger,
+  })
+);
 
-subscribe('policy-service','policy-service','action.contract_validated', async (data) => {
-  console.log('POLICY RECEIVED:', data);
+app.use("/", healthRoutes);
 
-  const decision = evaluatePolicy(data);
-
-  if (decision === 'deny') {
-    console.log('POLICY DENIED');
-    return;
-  }
-
-  await publish('action.risk_check', {
-    ...data,
-    policy: decision
-  });
+const server = app.listen(env.port, () => {
+  logger.info(
+    {
+      service: env.serviceName,
+      port: env.port,
+    },
+    "Service online"
+  );
 });
 
-app.get('/health', (req, res) => res.send({ status: 'ok' }));
-
-app.listen(3002, () => {
-  console.log('policy-service running on 3002');
-});
+setupShutdown(server);

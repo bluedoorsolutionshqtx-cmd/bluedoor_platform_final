@@ -1,34 +1,39 @@
-import express from 'express';
-import { subscribe, publish } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import pinoHttp from "pino-http";
+
+import { env } from "./config/env.js";
+import { logger } from "./lib/logger.js";
+import { setupShutdown } from "./lib/shutdown.js";
+
+import healthRoutes from "./routes/health.routes.js";
 
 const app = express();
+
+app.use(helmet());
+app.use(cors());
+app.use(compression());
+
 app.use(express.json());
 
-// simple contract schema (expand later)
-function validateContract(data) {
-  if (!data || typeof data !== 'object') return false;
-  if (!data.ping && !data.job) return false;
-  return true;
-}
+app.use(
+  pinoHttp({
+    logger,
+  })
+);
 
-subscribe('contract-service','action.contract_check', async (data) => {
-  console.log('CONTRACT RECEIVED:', data);
+app.use("/", healthRoutes);
 
-  const valid = validateContract(data);
-
-  if (!valid) {
-    console.log('CONTRACT REJECTED');
-    return;
-  }
-
-  await publish('action.contract_validated', {
-    ...data,
-    contract: 'valid'
-  });
+const server = app.listen(env.port, () => {
+  logger.info(
+    {
+      service: env.serviceName,
+      port: env.port,
+    },
+    "Service online"
+  );
 });
 
-app.get('/health', (req, res) => res.send({ status: 'ok' }));
-
-app.listen(3008, () => {
-  console.log('contract-service running on 3008');
-});
+setupShutdown(server);

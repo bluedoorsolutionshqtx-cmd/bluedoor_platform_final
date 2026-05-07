@@ -4,3 +4,8 @@ dist/
 .env
 *.log
 dump.rdb
+node_modules
+.pnpm-store
+dist
+coverage
+.DS_Store

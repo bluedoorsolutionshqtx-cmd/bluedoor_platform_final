@@ -1,25 +1,39 @@
-import express from 'express';
-import { subscribe, publish } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import pinoHttp from "pino-http";
+
+import { env } from "./config/env.js";
+import { logger } from "./lib/logger.js";
+import { setupShutdown } from "./lib/shutdown.js";
+
+import healthRoutes from "./routes/health.routes.js";
 
 const app = express();
+
+app.use(helmet());
+app.use(cors());
+app.use(compression());
+
 app.use(express.json());
 
-subscribe('risk-engine','action.risk_check', async (data) => {
-  console.log('RISK RECEIVED:', data);
+app.use(
+  pinoHttp({
+    logger,
+  })
+);
 
-  // simple risk score
-  const riskScore = 10; // low risk
+app.use("/", healthRoutes);
 
-  await publish('action.approval_required', {
-    ...data,
-    riskScore
-  });
+const server = app.listen(env.port, () => {
+  logger.info(
+    {
+      service: env.serviceName,
+      port: env.port,
+    },
+    "Service online"
+  );
 });
 
-app.get('/health', (req, res) => {
-  res.send({ status: 'ok' });
-});
-
-app.listen(3003, () => {
-  console.log('risk-engine running on 3003');
-});
+setupShutdown(server);

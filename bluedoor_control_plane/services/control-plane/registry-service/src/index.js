@@ -1,20 +1,39 @@
-import express from 'express';
-import { subscribe, publish } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import pinoHttp from "pino-http";
+
+import { env } from "./config/env.js";
+import { logger } from "./lib/logger.js";
+import { setupShutdown } from "./lib/shutdown.js";
+
+import healthRoutes from "./routes/health.routes.js";
 
 const app = express();
+
+app.use(helmet());
+app.use(cors());
+app.use(compression());
+
 app.use(express.json());
 
-subscribe('registry-service','action.requested', async (data) => {
-  console.log('REGISTRY RECEIVED:', data);
+app.use(
+  pinoHttp({
+    logger,
+  })
+);
 
-  await publish('action.contract_check', {
-    ...data,
-    stage: 'registry'
-  });
+app.use("/", healthRoutes);
+
+const server = app.listen(env.port, () => {
+  logger.info(
+    {
+      service: env.serviceName,
+      port: env.port,
+    },
+    "Service online"
+  );
 });
 
-app.get('/health', (req, res) => res.send({ status: 'ok' }));
-
-app.listen(3001, () => {
-  console.log('registry-service running on 3001');
-});
+setupShutdown(server);
