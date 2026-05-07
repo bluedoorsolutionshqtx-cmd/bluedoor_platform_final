@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 
-const redis = new Redis('redis://127.0.0.1:6379');
+const redis = new Redis('redis://127.0.0.1:6380');
 
 const TTL_SECONDS = 300; // 5 minutes window
 
