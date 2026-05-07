@@ -1,5 +1,5 @@
 {
-  "name": "bluedoor_platform",
+  "name": "bluedoor_platform_final",
   "private": true,
   "scripts": {
     "lint": "echo \"add lint\"",
