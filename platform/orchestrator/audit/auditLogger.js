@@ -3,7 +3,7 @@ import redis from '../streams/redisClient.js';
 const AUDIT_STREAM =
   'workflow.audit';
 
-export async function logAudit(
+export async function saveAuditEvent(
   payload
 ) {
   await redis.xadd(

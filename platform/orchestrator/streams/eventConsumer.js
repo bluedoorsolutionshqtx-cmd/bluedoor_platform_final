@@ -32,11 +32,16 @@ const STREAM =
 
 const GROUP =
   process.env.WORKFLOW_GROUP ||
-  'workflow-group';
+  'orchestrator-group';
 
 const CONSUMER =
   process.env.WORKFLOW_CONSUMER ||
   'consumer-1';
+
+console.log('[eventConsumer loaded]');
+console.log('[stream]', STREAM);
+console.log('[group]', GROUP);
+console.log('[consumer]', CONSUMER);
 
 async function ensureGroup() {
   try {
@@ -44,12 +49,13 @@ async function ensureGroup() {
       'CREATE',
       STREAM,
       GROUP,
-      '$',
+      '0',
       'MKSTREAM'
     );
 
     console.log(
-      '[group created]'
+      '[group created]',
+      GROUP
     );
   } catch (error) {
     if (
@@ -57,7 +63,15 @@ async function ensureGroup() {
         'BUSYGROUP'
       )
     ) {
-      console.error(error);
+      console.error(
+        '[group error]',
+        error
+      );
+    } else {
+      console.log(
+        '[group exists]',
+        GROUP
+      );
     }
   }
 }
@@ -72,6 +86,7 @@ async function processEvent(
   await saveWorkflowState({
     workflowId,
     workflowType:
+      payload.workflowType ||
       'job-lifecycle',
     currentState:
       payload.type,
@@ -84,16 +99,16 @@ async function processEvent(
 
   await saveAuditEvent({
     workflowId,
-    eventType:
-      payload.type,
+    type: payload.type,
     payload
   });
 
   await saveMemory({
     workflowId,
-    eventType:
-      payload.type,
-    payload
+    workflowType:
+      payload.workflowType ||
+      'job-lifecycle',
+    type: payload.type
   });
 
   if (
@@ -102,13 +117,14 @@ async function processEvent(
   ) {
     await saveCheckpoint({
       workflowId,
-      state:
-        payload.type,
+      state: payload.type,
       payload
     });
   }
 
-  await dispatchEvent(payload);
+  await dispatchEvent(
+    payload
+  );
 
   console.log(
     '[workflow updated]',
@@ -118,6 +134,10 @@ async function processEvent(
 }
 
 async function consume() {
+  console.log(
+    '[consume starting]'
+  );
+
   await ensureGroup();
 
   while (true) {
@@ -127,10 +147,10 @@ async function consume() {
           'GROUP',
           GROUP,
           CONSUMER,
-          'BLOCK',
-          5000,
           'COUNT',
           10,
+          'BLOCK',
+          5000,
           'STREAMS',
           STREAM,
           '>'
@@ -170,12 +190,22 @@ async function consume() {
             GROUP,
             id
           );
+
+          console.log(
+            '[event acked]',
+            id
+          );
         }
       }
     } catch (error) {
-      console.error(error);
+      console.error(
+        '[consumer error]',
+        error
+      );
     }
   }
 }
 
-consume().catch(console.error);
+consume().catch(
+  console.error
+);

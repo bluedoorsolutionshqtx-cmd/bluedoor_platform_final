@@ -1,4 +1,4 @@
-import redis from '../streams/redisClient.js';
+import redis from '../db/redis/redisClient.js';
 
 import {
   retryEvent
@@ -9,12 +9,12 @@ import {
 } from '../streams/deadletter.js';
 
 import {
-  logAudit
+  saveAuditEvent
 } from '../audit/auditLogger.js';
 
 import {
   storeMemory
-} from '../memory/memoryManager.js';
+} from '../memory/memoryStore.js';
 
 import {
   evaluatePolicy
@@ -25,66 +25,30 @@ import {
 } from '../governance/approval/approvalManager.js';
 
 const workerMap = {
-  'lead.created':
-    'dispatch.worker',
-
-  'client.created':
-    'dispatch.worker',
-
-  'property.registered':
-    'routing.worker',
-
-  'job.scheduled':
-    'routing.worker',
-
-  'route.generated':
-    'routing.worker',
-
-  'crew.assigned':
-    'dispatch.worker',
-
-  'job.approved':
-    'dispatch.worker',
-
-  'crew.dispatched':
-    'dispatch.worker',
-
-  'crew.arrived':
-    'dispatch.worker',
-
-  'job.started':
-    'dispatch.worker',
-
-  'job.completed':
-    'billing.worker',
-
-  'invoice.generated':
-    'billing.worker',
-
-  'payment.recorded':
-    'billing.worker',
-
-  'audit.logged':
-    'audit.worker',
-
-  'memory.stored':
-    'memory.worker',
-
-  'checkpoint.saved':
-    'recovery.worker',
-
-  'payment.refund':
-    'billing.worker'
+  'lead.created': 'dispatch.worker',
+  'client.created': 'dispatch.worker',
+  'property.registered': 'routing.worker',
+  'job.scheduled': 'routing.worker',
+  'route.generated': 'routing.worker',
+  'crew.assigned': 'dispatch.worker',
+  'job.approved': 'dispatch.worker',
+  'crew.dispatched': 'dispatch.worker',
+  'crew.arrived': 'dispatch.worker',
+  'job.started': 'dispatch.worker',
+  'job.completed': 'billing.worker',
+  'invoice.generated': 'billing.worker',
+  'payment.recorded': 'billing.worker',
+  'audit.logged': 'audit.worker',
+  'memory.stored': 'memory.worker',
+  'checkpoint.saved': 'recovery.worker',
+  'payment.refund': 'billing.worker'
 };
 
-export async function dispatchEvent(
-  payload
-) {
+export async function dispatchEvent(payload) {
   const worker =
     workerMap[payload.type];
 
   if (!worker) {
-
     await sendToDeadLetter(
       payload,
       'missing worker mapping'
@@ -94,12 +58,9 @@ export async function dispatchEvent(
   }
 
   const policy =
-    evaluatePolicy(payload);
+    await evaluatePolicy(payload);
 
-  if (
-    policy.approvalRequired
-  ) {
-
+  if (policy?.approvalRequired) {
     await createApproval(
       payload,
       policy.risk
@@ -114,7 +75,6 @@ export async function dispatchEvent(
   }
 
   try {
-
     await redis.xadd(
       `worker.${worker}`,
       '*',
@@ -122,9 +82,22 @@ export async function dispatchEvent(
       JSON.stringify(payload)
     );
 
-    await logAudit(payload);
+    await saveAuditEvent({
+      workflowId:
+        payload.workflowId,
+      eventType:
+        payload.type,
+      payload
+    });
 
-    await storeMemory(payload);
+    await storeMemory({
+      workflowId:
+        payload.workflowId,
+      workflowType:
+        payload.workflowType,
+      type:
+        payload.type
+    });
 
     console.log(
       '[dispatcher]',
