@@ -1,0 +1,96 @@
+import 'react-native-gesture-handler';
+import React from 'react';
+
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+import RouteScreen from './src/screens/RouteScreen';
+import CrewsScreen from './src/screens/CrewsScreen';
+import ClientsScreen from './src/screens/ClientsScreen';
+import MessagesScreen from './src/screens/MessagesScreen';
+import ScheduleScreen from './src/screens/ScheduleScreen';
+import ReportsScreen from './src/screens/ReportsScreen';
+
+import ClientDetailScreen from './src/screens/client/ClientDetailScreen';
+import InvoiceScreen from './src/screens/client/InvoiceScreen';
+import PaymentScreen from './src/screens/client/PaymentScreen';
+import JobHistoryScreen from './src/screens/client/JobHistoryScreen';
+
+const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+function ClientStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="ClientList"
+        component={ClientsScreen}
+        options={{ title: 'Clients' }}
+      />
+
+      <Stack.Screen
+        name="ClientDetail"
+        component={ClientDetailScreen}
+      />
+
+      <Stack.Screen
+        name="Invoices"
+        component={InvoiceScreen}
+      />
+
+      <Stack.Screen
+        name="Payments"
+        component={PaymentScreen}
+      />
+
+      <Stack.Screen
+        name="Jobs"
+        component={JobHistoryScreen}
+      />
+    </Stack.Navigator>
+  );
+}
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Tab.Navigator>
+
+        <Tab.Screen
+          name="Route"
+          component={RouteScreen}
+        />
+
+        <Tab.Screen
+          name="Crews"
+          component={CrewsScreen}
+        />
+
+        <Tab.Screen
+          name="Clients"
+          component={ClientStack}
+          options={{
+            headerShown: false
+          }}
+        />
+
+        <Tab.Screen
+          name="Messages"
+          component={MessagesScreen}
+        />
+
+        <Tab.Screen
+          name="Schedule"
+          component={ScheduleScreen}
+        />
+
+        <Tab.Screen
+          name="Reports"
+          component={ReportsScreen}
+        />
+
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+}

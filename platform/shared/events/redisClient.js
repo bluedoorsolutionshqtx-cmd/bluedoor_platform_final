@@ -1,15 +1,46 @@
-const Redis = require("ioredis");
+import Redis from 'ioredis';
 
 const config = {
-  host: process.env.REDIS_HOST || "127.0.0.1",
-  port: process.env.REDIS_PORT || 6380,
-  retryStrategy: (times) => Math.min(times * 50, 2000),
+  host:
+    process.env.REDIS_HOST ||
+    '127.0.0.1',
+
+  port:
+    Number(
+      process.env.REDIS_PORT ||
+      6379
+    ),
+
+  retryStrategy: times =>
+    Math.min(
+      times * 50,
+      2000
+    )
 };
 
-const pub = new Redis(config);
-const sub = new Redis(config);
+export const pub =
+  new Redis(config);
 
-pub.on("connect", () => console.log("REDIS PUB CONNECTED"));
-sub.on("connect", () => console.log("REDIS SUB CONNECTED"));
+export const sub =
+  new Redis(config);
 
-module.exports = { pub, sub };
+pub.on(
+  'connect',
+  () =>
+    console.log(
+      'REDIS PUB CONNECTED'
+    )
+);
+
+sub.on(
+  'connect',
+  () =>
+    console.log(
+      'REDIS SUB CONNECTED'
+    )
+);
+
+export default {
+  pub,
+  sub
+};

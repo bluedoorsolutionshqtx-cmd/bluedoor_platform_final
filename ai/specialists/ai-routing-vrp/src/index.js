@@ -1,4 +1,4 @@
-import { publish } from "../../../../packages/events/eventBus.js";
+import { publish } from "../../../../platform/shared/events/eventBus.js";
 import express from "express";
 
 const app = express();

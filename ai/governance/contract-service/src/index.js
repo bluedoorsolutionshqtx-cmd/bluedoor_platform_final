@@ -1,34 +1,52 @@
 import express from 'express';
-import { subscribe, publish } from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/packages/events/eventBus.js';
+
+import {
+  subscribe,
+  publish
+} from 'file:///data/data/com.termux/files/home/bluedoor_platform_final/platform/shared/events/eventBus.js';
 
 const app = express();
-app.use(express.json());
 
-// simple contract schema (expand later)
-function validateContract(data) {
-  if (!data || typeof data !== 'object') return false;
-  if (!data.ping && !data.job) return false;
-  return true;
-}
+app.use(
+  express.json()
+);
 
-subscribe('contract-service','action.contract_check', async (data) => {
-  console.log('CONTRACT RECEIVED:', data);
+subscribe(
+  'contract-service',
+  'action.contract_check',
+  async (data) => {
 
-  const valid = validateContract(data);
+    console.log(
+      'CONTRACT SERVICE RECEIVED:',
+      data
+    );
 
-  if (!valid) {
-    console.log('CONTRACT REJECTED');
-    return;
+    await publish(
+      'action.contract_validation_requested',
+      data
+    );
+
+    console.log(
+      'CONTRACT FORWARDED:',
+      data.eventId
+    );
   }
+);
 
-  await publish('action.contract_validated', {
-    ...data,
-    contract: 'valid'
-  });
-});
+app.get(
+  '/health',
+  (req, res) => {
+    res.send({
+      status: 'ok'
+    });
+  }
+);
 
-app.get('/health', (req, res) => res.send({ status: 'ok' }));
-
-app.listen(3008, () => {
-  console.log('contract-service running on 3008');
-});
+app.listen(
+  3001,
+  () => {
+    console.log(
+      'contract-service running on 3001'
+    );
+  }
+);

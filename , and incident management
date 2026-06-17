@@ -1,0 +1,67 @@
+ apps/manager-app/.claude/settings.json    |    5 [32m+[m
+ apps/manager-app/.gitignore               |   41 [32m+[m
+ apps/manager-app/AGENTS.md                |    3 [32m+[m
+ apps/manager-app/App.js                   |  273 [32m+[m
+ apps/manager-app/App.js.backup            |   96 [32m+[m
+ apps/manager-app/CLAUDE.md                |    1 [32m+[m
+ apps/manager-app/LICENSE                  |   21 [32m+[m
+ apps/manager-app/app.json                 |   31 [32m+[m
+ .../assets/android-icon-background.png    |  Bin [31m0[m -> [32m17549[m bytes
+ .../assets/android-icon-foreground.png    |  Bin [31m0[m -> [32m78796[m bytes
+ .../assets/android-icon-monochrome.png    |  Bin [31m0[m -> [32m4140[m bytes
+ apps/manager-app/assets/favicon.png       |  Bin [31m0[m -> [32m1129[m bytes
+ apps/manager-app/assets/icon.png          |  Bin [31m0[m -> [32m393493[m bytes
+ apps/manager-app/assets/splash-icon.png   |  Bin [31m0[m -> [32m17547[m bytes
+ apps/manager-app/eas.json                 |   21 [32m+[m
+ apps/manager-app/index.js                 |    8 [32m+[m
+ apps/manager-app/package-lock.json        | 6659 [32m++++++++++++++[m
+ apps/manager-app/package.json             |   29 [32m+[m
+ .../src/screens/ClientsScreen.js          |  432 [32m+[m
+ .../src/screens/CrewsScreen.js            |  223 [32m+[m
+ .../src/screens/MessagesScreen.js         |  253 [32m+[m
+ .../src/screens/ReportsScreen.js          |  612 [32m++[m
+ .../src/screens/RouteScreen.js            |  135 [32m+[m
+ .../src/screens/ScheduleScreen.js         |  222 [32m+[m
+ .../screens/client/ClientDetailScreen.js  |   14 [32m+[m
+ .../src/screens/client/InvoiceScreen.js   |  115 [32m+[m
+ .../screens/client/JobHistoryScreen.js    |  177 [32m+[m
+ .../src/screens/client/PaymentScreen.js   |  171 [32m+[m
+ .../src/screens/crew/CrewDetailScreen.js  |  150 [32m+[m
+ .../incidents/IncidentAnalyticsScreen.js  |  400 [32m+[m
+ .../incidents/IncidentDetailScreen.js     |  510 [32m+[m
+ .../incidents/IncidentListScreen.js       |  564 [32m++[m
+ .../src/screens/job/JobDetailScreen.js    |  361 [32m+[m
+ .../messages/ConversationScreen.js        |  354 [32m+[m
+ .../OperationsDashboardScreen.js          |  443 [32m+[m
+ .../workorders/WorkOrderDetailScreen.js   |  501 [32m+[m
+ .../workorders/WorkOrdersScreen.js        |  615 [32m++[m
+ .../manager-app/src/services/clientApi.js |   78 [32m+[m
+ .../job-lifecycle-service/index.js        |  193 [32m+[m
+ services/client-crm/package.json          |   16 [32m+[m
+ .../src/analytics/getAnalyticsSummary.js  |   75 [32m+[m
+ .../analytics/routes/analyticsRoutes.js   |   29 [32m+[m
+ .../src/analytics/saveAnalyticsEvent.js   |   45 [32m+[m
+ .../services/analyticsService.js          |   20 [32m+[m
+ .../client-crm/src/audit/saveAudit.js     |   37 [32m+[m
+ .../index.activity-timeline-prebuild.bak  |  545 [32m++[m
+ .../client-crm/src/index.full-export.js   |  545 [32m++[m
+ services/client-crm/src/index.js          | 4234 [32m+++++++++[m
+ services/client-crm/src/index.js.bak      |  612 [32m++[m
+ .../index.pre-activity-timeline-final.bak |  545 [32m++[m
+ .../src/index.pre-analytics.bak           |  606 [32m++[m
+ .../client-crm/src/index.pre-notes.bak    |  594 [32m++[m
+ .../client-crm/src/index.pre-tasks.bak    |  600 [32m++[m
+ .../src/index.timeline-ready.bak          |  545 [32m++[m
+ services/client-crm/src/notes/getNotes.js |   33 [32m+[m
+ .../src/notes/routes/noteRoutes.js        |  102 [32m+[m
+ services/client-crm/src/notes/saveNote.js |   45 [32m+[m
+ .../src/notes/services/noteService.js     |   46 [32m+[m
+ services/client-crm/src/tasks/getTasks.js |   33 [32m+[m
+ .../src/tasks/routes/taskRoutes.js        |  104 [32m+[m
+ services/client-crm/src/tasks/saveTask.js |   53 [32m+[m
+ .../src/tasks/services/taskService.js     |   54 [32m+[m
+ .../src/timeline/getTimeline.js           |   33 [32m+[m
+ .../src/timeline/routes/timelineRoutes.js |   50 [32m+[m
+ .../src/timeline/saveTimelineEvent.js     |   41 [32m+[m
+ .../timeline/services/timelineService.js  |   59 [32m+[m
+ 66 files changed, 23412 insertions(+)

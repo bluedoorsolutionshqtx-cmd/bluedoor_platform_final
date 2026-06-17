@@ -1,0 +1,16 @@
+{
+  "name": "client-crm",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.22.1",
+    "ioredis": "^5.10.1",
+    "multer": "^2.2.0",
+    "pg": "^8.20.0",
+    "zod": "^3.25.76"
+  }
+}

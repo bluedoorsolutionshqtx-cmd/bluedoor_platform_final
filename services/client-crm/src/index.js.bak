@@ -1,0 +1,612 @@
+import express from 'express';
+import pg from 'pg';
+import { publish } from '../../../platform/shared/events/eventBus.js';
+import { saveAudit } from './audit/saveAudit.js';
+import {
+  recordLeadEvent,
+  recordClientEvent,
+  recordPropertyEvent
+} from './timeline/services/timelineService.js';
+import timelineRoutes from './timeline/routes/timelineRoutes.js';
+import noteRoutes from './notes/routes/noteRoutes.js';
+import taskRoutes from './tasks/routes/taskRoutes.js';
+import analyticsRoutes from './analytics/routes/analyticsRoutes.js';
+
+const { Pool } = pg;
+
+const app = express();
+
+app.use(express.json());
+app.use(
+  '/api',
+  timelineRoutes
+);
+
+app.use(
+  '/api',
+  noteRoutes
+);
+
+app.use(
+  '/api',
+  taskRoutes
+);
+
+app.use(
+  '/api',
+  analyticsRoutes
+);
+
+const pool = new Pool({
+  connectionString:
+    process.env.DATABASE_URL ||
+    'postgresql://postgres@127.0.0.1:5432/bluedoor'
+});
+
+app.get('/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT NOW()');
+
+    res.json({
+      service: 'client-crm',
+      status: 'online'
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| LEADS
+|--------------------------------------------------------------------------
+*/
+
+app.post('/api/leads', async (req, res) => {
+  try {
+    const {
+      first_name,
+      last_name,
+      email,
+      phone,
+      source,
+      notes
+    } = req.body;
+
+    const result = await pool.query(
+      `
+      INSERT INTO crm_leads
+      (
+        first_name,
+        last_name,
+        email,
+        phone,
+        source,
+        notes
+      )
+      VALUES
+      (
+        $1,$2,$3,$4,$5,$6
+      )
+      RETURNING *
+      `,
+      [
+        first_name,
+        last_name,
+        email,
+        phone,
+        source,
+        notes
+      ]
+    );
+
+    const lead = result.rows[0];
+
+    await publish(
+      'crm.lead.created',
+      lead
+    );
+
+    await saveAudit(
+      lead.id,
+      'crm.lead.created',
+      lead
+    );
+
+await recordLeadEvent(
+  lead.id,
+  'crm.lead.created',
+  lead
+);
+
+    res.status(201).json(lead);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+app.get('/api/leads', async (req, res) => {
+  try {
+
+    const search =
+      req.query.search || '';
+
+    const result =
+      await pool.query(
+        `
+        SELECT *
+        FROM crm_leads
+        WHERE
+          first_name ILIKE $1 OR
+          last_name ILIKE $1 OR
+          email ILIKE $1 OR
+          phone ILIKE $1 OR
+          status ILIKE $1
+        ORDER BY created_at DESC
+        `,
+        [
+          `%${search}%`
+        ]
+      );
+
+    res.json(result.rows);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| CLIENTS
+|--------------------------------------------------------------------------
+*/
+
+app.post('/api/clients', async (req, res) => {
+  try {
+    const {
+      lead_id,
+      company_name,
+      first_name,
+      last_name,
+      email,
+      phone
+    } = req.body;
+
+    const result =
+      await pool.query(
+        `
+        INSERT INTO crm_clients
+        (
+          lead_id,
+          company_name,
+          first_name,
+          last_name,
+          email,
+          phone
+        )
+        VALUES
+        (
+          $1,$2,$3,$4,$5,$6
+        )
+        RETURNING *
+        `,
+        [
+          lead_id,
+          company_name,
+          first_name,
+          last_name,
+          email,
+          phone
+        ]
+      );
+
+    const client = result.rows[0];
+
+    await publish(
+      'crm.client.created',
+      client
+    );
+
+    await saveAudit(
+      client.id,
+      'crm.client.created',
+      client
+    );
+
+await recordClientEvent(
+  client.id,
+  'crm.client.created',
+  client
+);
+
+    res.status(201).json(client);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+app.get('/api/clients', async (req, res) => {
+  try {
+
+    const search =
+      req.query.search || '';
+
+    const result =
+      await pool.query(
+        `
+        SELECT *
+        FROM crm_clients
+        WHERE
+          first_name ILIKE $1 OR
+          last_name ILIKE $1 OR
+          company_name ILIKE $1 OR
+          email ILIKE $1 OR
+          phone ILIKE $1 OR
+          status ILIKE $1
+        ORDER BY created_at DESC
+        `,
+        [
+          `%${search}%`
+        ]
+      );
+
+    res.json(result.rows);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| PROPERTIES
+|--------------------------------------------------------------------------
+*/
+
+app.post('/api/properties', async (req, res) => {
+  try {
+    const {
+      client_id,
+      property_name,
+      address_1,
+      address_2,
+      city,
+      state,
+      postal_code,
+      acreage,
+      notes
+    } = req.body;
+
+    const result =
+      await pool.query(
+        `
+        INSERT INTO crm_properties
+        (
+          client_id,
+          property_name,
+          address_1,
+          address_2,
+          city,
+          state,
+          postal_code,
+          acreage,
+          notes
+        )
+        VALUES
+        (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9
+        )
+        RETURNING *
+        `,
+        [
+          client_id,
+          property_name,
+          address_1,
+          address_2,
+          city,
+          state,
+          postal_code,
+          acreage,
+          notes
+        ]
+      );
+
+    const property = result.rows[0];
+
+    await publish(
+      'crm.property.created',
+      property
+    );
+
+    await saveAudit(
+      property.id,
+      'crm.property.created',
+      property
+    );
+
+await recordPropertyEvent(
+  property.id,
+  'crm.property.created',
+  property
+);
+
+    res.status(201).json(property);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+app.get('/api/properties', async (_req, res) => {
+  try {
+    const result =
+      await pool.query(`
+        SELECT *
+        FROM crm_properties
+        ORDER BY created_at DESC
+      `);
+
+    res.json(result.rows);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| LEAD CONVERSION
+|--------------------------------------------------------------------------
+*/
+
+app.post('/api/leads/:id/convert', async (req, res) => {
+  try {
+
+    const leadId =
+      req.params.id;
+
+    const leadResult =
+      await pool.query(
+        `
+        SELECT *
+        FROM crm_leads
+        WHERE id = $1
+        `,
+        [leadId]
+      );
+
+    if (
+      leadResult.rows.length === 0
+    ) {
+      return res.status(404).json({
+        error: 'Lead not found'
+      });
+    }
+
+    const lead =
+      leadResult.rows[0];
+
+    const clientResult =
+      await pool.query(
+        `
+        INSERT INTO crm_clients
+        (
+          lead_id,
+          first_name,
+          last_name,
+          email,
+          phone
+        )
+        VALUES
+        (
+          $1,$2,$3,$4,$5
+        )
+        RETURNING *
+        `,
+        [
+          lead.id,
+          lead.first_name,
+          lead.last_name,
+          lead.email,
+          lead.phone
+        ]
+      );
+
+    const client =
+      clientResult.rows[0];
+
+    await pool.query(
+      `
+      UPDATE crm_leads
+      SET
+        status = 'converted',
+        updated_at = NOW()
+      WHERE id = $1
+      `,
+      [lead.id]
+    );
+
+    await publish(
+      'crm.client.created',
+      client
+    );
+
+    await saveAudit(
+      client.id,
+      'crm.client.created',
+      client
+    );
+
+await recordLeadEvent(
+  lead.id,
+  'crm.lead.converted',
+  {
+    leadId: lead.id,
+    clientId: client.id
+  }
+);
+
+    await saveAudit(
+      lead.id,
+      'crm.lead.converted',
+      {
+        leadId: lead.id,
+        clientId: client.id
+      }
+    );
+
+    res.status(201).json({
+      leadId: lead.id,
+      client
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| STATUS MANAGEMENT
+|--------------------------------------------------------------------------
+*/
+
+app.patch('/api/leads/:id/status', async (req, res) => {
+  try {
+
+    const result =
+      await pool.query(
+        `
+        UPDATE crm_leads
+        SET
+          status = $1,
+          updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+        `,
+        [
+          req.body.status,
+          req.params.id
+        ]
+      );
+
+    if (
+      result.rows.length === 0
+    ) {
+      return res.status(404).json({
+        error: 'Lead not found'
+      });
+    }
+
+    const lead =
+      result.rows[0];
+
+    await publish(
+      'crm.lead.status.changed',
+      lead
+    );
+
+    await saveAudit(
+      lead.id,
+      'crm.lead.status.changed',
+      lead
+    );
+
+await recordLeadEvent(
+  lead.id,
+  'crm.lead.status.changed',
+  lead
+);
+
+    res.json(lead);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+app.patch('/api/clients/:id/status', async (req, res) => {
+  try {
+
+    const result =
+      await pool.query(
+        `
+        UPDATE crm_clients
+        SET
+          status = $1,
+          updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+        `,
+        [
+          req.body.status,
+          req.params.id
+        ]
+      );
+
+    if (
+      result.rows.length === 0
+    ) {
+      return res.status(404).json({
+        error: 'Client not found'
+      });
+    }
+
+    const client =
+      result.rows[0];
+
+    await publish(
+      'crm.client.status.changed',
+      client
+    );
+
+    await saveAudit(
+      client.id,
+      'crm.client.status.changed',
+      client
+    );
+
+await recordClientEvent(
+  client.id,
+  'crm.client.status.changed',
+  client
+);
+
+    res.json(client);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+const port =
+  process.env.PORT || 4004;
+
+app.listen(port, () => {
+  console.log(
+    `[client-crm] running on ${port}`
+  );
+});
